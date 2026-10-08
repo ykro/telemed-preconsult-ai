@@ -1,0 +1,20 @@
+{
+  "name": "Telemed Pre-Consult AI — Triaje Clínico y Pase de Pre-Consulta",
+  "short_name": "Telemed AI",
+  "description": "Pre-consulta médica inteligente por voz con generación instantánea de Pase del Paciente y Ficha Clínica SOAP / ISBAR.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0284c7",
+  "orientation": "portrait-primary",
+  "lang": "es-GT",
+  "categories": ["medical", "health", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
