@@ -2,14 +2,14 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Telemed Pre-Consult AI | Triaje por Voz, Pase del Paciente y Ficha SOAP/ISBAR',
+  title: 'PreConsulta — Prepara tu consulta médica por voz',
   description:
-    'PWA Mobile-First de pre-consulta médica por voz con arquitectura A/B (Gemini 3.8 Flash Directo vs. Cascada Gemma 4 + Gemini 3.8 Flash), seguimiento OPQRST y doble entregable clínico.',
+    'Cuéntanos cómo te sientes por voz, responde 3 preguntas rápidas y obtén tu resumen para el paciente y ficha médica SOAP / ISBAR.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Telemed AI',
+    title: 'PreConsulta',
   },
 };
 
@@ -26,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es-GT" className="light">
-      <body className="min-h-screen bg-slate-50 text-slate-900 selection:bg-sky-100 selection:text-sky-900 antialiased">
+    <html lang="es" className="light">
+      <body className="min-h-screen bg-[#F8FAFC] text-slate-800 selection:bg-sky-100 selection:text-sky-900 antialiased">
         {children}
       </body>
     </html>

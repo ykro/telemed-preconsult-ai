@@ -1,7 +1,5 @@
 export type ArchitectureVariant = 'A' | 'B';
 
-export type CurrencyCode = 'GTQ' | 'USD';
-
 export type TriageLevel = 'VERDE' | 'AMARILLO' | 'ROJO';
 
 export type ClinicalFramework = 'SOAP' | 'ISBAR';
@@ -10,7 +8,7 @@ export interface FollowUpQuestion {
   id: number;
   question: string;
   quick_options: string[];
-  opqrst_target: string;
+  opqrst_target?: string;
 }
 
 export interface FollowUpAnswer {
@@ -25,8 +23,6 @@ export interface PatientDeliverable {
   questions_to_ask_doctor: string[];
   prep_checklist: string[];
   urgency_notice: string;
-  estimated_consultation_cost: string;
-  recommended_modality: string;
 }
 
 export interface OpqrstBreakdown {
@@ -56,7 +52,7 @@ export interface IsbarNote {
 export interface EvidenceQuote {
   fact: string;
   quote: string;
-  source: 'Relato Inicial' | 'Follow-Up OPQRST';
+  source?: string;
 }
 
 export interface DoctorDeliverable {
@@ -68,34 +64,17 @@ export interface DoctorDeliverable {
   evidence_quotes: EvidenceQuote[];
 }
 
-export interface TelemetryMetadata {
-  latencyMs: number;
-  modelUsed: string;
-  piiRedactedCount: number;
-  piiTypesDetected: string[];
-  variant: ArchitectureVariant;
-  usedFallback?: boolean;
-  redactedPreview?: string;
-}
-
 export interface FollowUpApiResponse {
   follow_up_questions: FollowUpQuestion[];
-  telemetry: TelemetryMetadata;
 }
 
 export interface DeliverablesApiResponse {
   patient_deliverable: PatientDeliverable;
   doctor_deliverable: DoctorDeliverable;
-  telemetry: TelemetryMetadata;
 }
 
 export interface DemoPatientCase {
   id: string;
-  badge: string;
-  title: string;
-  subtitle: string;
-  patientProfile: string;
+  label: string;
   transcript: string;
-  simulatedWpm: number;
-  triageHint: TriageLevel;
 }

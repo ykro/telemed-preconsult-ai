@@ -6,7 +6,6 @@ import {
 } from '@/lib/clinical-engine';
 import {
   ArchitectureVariant,
-  CurrencyCode,
   DoctorDeliverable,
   FollowUpAnswer,
   FollowUpQuestion,
@@ -19,7 +18,6 @@ interface TelemedRequestPayload {
   action: 'generate_followups' | 'generate_deliverables';
   transcript: string;
   variant?: ArchitectureVariant;
-  currency?: CurrencyCode;
   followUpAnswers?: FollowUpAnswer[];
 }
 
@@ -46,7 +44,7 @@ async function callGenerativeLanguageModel(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9500);
+  const timeoutId = setTimeout(() => controller.abort(), 9000);
 
   try {
     const endpoint = `${GEMINI_API_BASE}/${modelPath}:generateContent?key=${apiKey}`;
@@ -62,16 +60,9 @@ async function callGenerativeLanguageModel(
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: prompt }],
-          },
-        ],
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig,
       }),
       signal: controller.signal,
@@ -87,7 +78,7 @@ async function callGenerativeLanguageModel(
       data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!textOutput) {
-      throw new Error('Empty response candidate from Generative Language API');
+      throw new Error('Empty response candidate');
     }
 
     return extractJsonFromText(textOutput);
@@ -97,74 +88,55 @@ async function callGenerativeLanguageModel(
 }
 
 export async function POST(request: NextRequest) {
-  const startTime = performance.now();
-
   try {
     const body = (await request.json()) as TelemedRequestPayload;
     const action = body.action;
     const rawTranscript = (body.transcript || '').trim();
     const variant: ArchitectureVariant = body.variant === 'A' ? 'A' : 'B';
-    const currency: CurrencyCode = body.currency === 'USD' ? 'USD' : 'GTQ';
 
     if (!rawTranscript) {
       return NextResponse.json(
-        { error: 'La transcripción del paciente no puede estar vacía.' },
+        { error: 'Por favor describe tus síntomas.' },
         { status: 400 }
       );
     }
 
-    // Apply local PII redaction in Variant B (Edge-Assisted Cascade)
     const piiResult =
       variant === 'B'
         ? redactPiiLocally(rawTranscript)
-        : {
-            redactedText: rawTranscript,
-            piiRedactedCount: 0,
-            piiTypesDetected: [],
-          };
+        : { redactedText: rawTranscript, piiRedactedCount: 0 };
 
     const processedTranscript = piiResult.redactedText;
 
     if (action === 'generate_followups') {
-      // Variant A uses models/gemini-3.8-flash directly
-      // Variant B uses models/gemma-4-26b-a4b-it (Gemma 4 E2B/MoE edge-tier architecture) after local PII redaction
       const targetModel =
         variant === 'A'
           ? 'models/gemini-3.8-flash'
           : 'models/gemma-4-26b-a4b-it';
 
-      const displayModel =
-        variant === 'A'
-          ? 'gemini-3.8-flash (Monolithic Cloud)'
-          : 'gemma-4-e2b / gemma-4-26b-a4b-it (Cascade Edge+Cloud)';
-
-      const followUpPrompt = `Eres un médico especialista en triaje de telemedicina en Latinoamérica (Guatemala).
-Analiza el siguiente relato inicial del paciente e identifica qué elementos clave del protocolo clínico OPQRST (Onset, Provocation/Palliation, Quality, Radiation, Severity 1-10, Time/Context/Allergies) faltan o requieren precisión inmediata.
+      const followUpPrompt = `Eres un médico empático en una pre-consulta de telemedicina.
+Analiza el relato del paciente e identifica qué elementos del protocolo clínico OPQRST faltan por aclarar.
 
 Relato del paciente:
 """
 ${processedTranscript}
 """
 
-Devuelve ÚNICAMENTE un objeto JSON válido con exactamente 3 preguntas cortas, empáticas y directas en español para el paciente, cada una con 3 opciones de respuesta rápida (chips de 1 toque).
-Formato JSON requerido:
+Devuelve ÚNICAMENTE un JSON válido con exactamente 3 preguntas breves, claras y directas en español, cada una con 3 opciones cortas de respuesta rápida:
 {
   "follow_up_questions": [
     {
       "id": 1,
-      "opqrst_target": "Severity & Onset",
       "question": "¿Pregunta corta 1?",
       "quick_options": ["Opción 1", "Opción 2", "Opción 3"]
     },
     {
       "id": 2,
-      "opqrst_target": "Provocation & Red Flags",
       "question": "¿Pregunta corta 2?",
       "quick_options": ["Opción 1", "Opción 2", "Opción 3"]
     },
     {
       "id": 3,
-      "opqrst_target": "Medications & Allergies",
       "question": "¿Pregunta corta 3?",
       "quick_options": ["Opción 1", "Opción 2", "Opción 3"]
     }
@@ -172,7 +144,6 @@ Formato JSON requerido:
 }`;
 
       let followUpQuestions: FollowUpQuestion[] | null = null;
-      let usedFallback = false;
 
       try {
         const parsed = (await callGenerativeLanguageModel(
@@ -188,39 +159,23 @@ Formato JSON requerido:
         ) {
           followUpQuestions = parsed.follow_up_questions.map((q, idx) => ({
             id: idx + 1,
-            opqrst_target: q.opqrst_target || `OPQRST #${idx + 1}`,
             question: String(q.question || ''),
             quick_options:
               Array.isArray(q.quick_options) && q.quick_options.length >= 2
                 ? q.quick_options.map(String)
-                : ['Sí, continúa igual', 'Solo por momentos', 'No he notado eso'],
+                : ['Sí', 'No', 'No estoy seguro'],
           }));
         }
       } catch {
-        usedFallback = true;
+        // Fallback below
       }
 
       if (!followUpQuestions) {
-        usedFallback = true;
         followUpQuestions = buildDeterministicFollowUps(processedTranscript);
       }
 
-      const latencyMs = Math.max(
-        18,
-        Math.round(performance.now() - startTime)
-      );
-
       return NextResponse.json({
         follow_up_questions: followUpQuestions,
-        telemetry: {
-          latencyMs,
-          modelUsed: displayModel,
-          piiRedactedCount: piiResult.piiRedactedCount,
-          piiTypesDetected: piiResult.piiTypesDetected,
-          variant,
-          usedFallback,
-          redactedPreview: processedTranscript,
-        },
       });
     }
 
@@ -229,58 +184,36 @@ Formato JSON requerido:
         ? body.followUpAnswers
         : [];
 
-      const sanitizedAnswers: FollowUpAnswer[] = rawAnswers.map((item) => {
-        if (variant === 'B') {
-          const r = redactPiiLocally(item.answer || '');
-          piiResult.piiRedactedCount += r.piiRedactedCount;
-          r.piiTypesDetected.forEach((t) => {
-            if (!piiResult.piiTypesDetected.includes(t)) {
-              piiResult.piiTypesDetected.push(t);
-            }
-          });
-          return {
-            ...item,
-            answer: r.redactedText,
-          };
-        }
-        return item;
-      });
+      const sanitizedAnswers: FollowUpAnswer[] = rawAnswers.map((item) => ({
+        ...item,
+        answer:
+          variant === 'B'
+            ? redactPiiLocally(item.answer || '').redactedText
+            : item.answer,
+      }));
 
-      const targetModel = 'models/gemini-3.8-flash';
-      const displayModel =
-        variant === 'A'
-          ? 'gemini-3.8-flash (Monolithic Direct)'
-          : 'gemma-4-26b-a4b-it → gemini-3.8-flash (Cascade)';
+      const deliverablesPrompt = `Eres un asistente clínico de pre-consulta médica.
+Con base en el relato del paciente y sus 3 respuestas de seguimiento, genera en español:
+1. "patient_deliverable": Resumen claro y empático ("friendly_summary"), 3 preguntas sugeridas para hacerle al médico ("questions_to_ask_doctor"), 3 puntos de preparación para la consulta ("prep_checklist"), y una orientación breve de prioridad ("urgency_notice"). No incluyas precios ni costos.
+2. "doctor_deliverable": Ficha médica concisa con "triage_level" ("VERDE", "AMARILLO" o "ROJO"), "red_flags", "opqrst", "soap", "isbar" y "evidence_quotes" (citas textuales exactas del paciente).
 
-      const currencyContext =
-        currency === 'GTQ'
-          ? 'Quetzales guatemaltecos (GTQ, símbolo Q, ej. Copago estimado Q 120.00)'
-          : 'Dólares estadounidenses (USD, símbolo $, ej. Estimated copay $ 15.00 USD)';
-
-      const deliverablesPrompt = `Eres un sistema clínico avanzado de pre-consulta médica para telemedicina en Guatemala y Latinoamérica.
-Con base en el relato inicial del paciente y sus respuestas a las 3 preguntas de seguimiento OPQRST, genera en español el Doble Entregable Clínico:
-1. "patient_deliverable" ("Tu Pase de Pre-Consulta" en lenguaje empático, claro y accionable, con estimación de copago/consulta de referencia en ${currencyContext}).
-2. "doctor_deliverable" (Ficha clínica estructurada con nivel de triaje VERDE/AMARILLO/ROJO, Red Flags, desglose OPQRST completo, nota SOAP, nota ISBAR y "evidence_quotes" con citas textuales exactas de lo que dijo el paciente).
-
-Relato inicial del paciente:
+Relato del paciente:
 """
 ${processedTranscript}
 """
 
-Respuestas a las 3 preguntas OPQRST:
+Respuestas a las 3 preguntas rápidas:
 ${sanitizedAnswers
-  .map((a, idx) => `P${idx + 1} (${a.question}): "${a.answer}"`)
+  .map((a, idx) => `${idx + 1}. ${a.question}: "${a.answer}"`)
   .join('\n')}
 
-Devuelve ÚNICAMENTE un objeto JSON estricto con esta estructura exacta:
+Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura:
 {
   "patient_deliverable": {
     "friendly_summary": "...",
-    "questions_to_ask_doctor": ["Pregunta 1", "Pregunta 2", "Pregunta 3"],
-    "prep_checklist": ["Item 1", "Item 2", "Item 3"],
-    "urgency_notice": "...",
-    "estimated_consultation_cost": "...",
-    "recommended_modality": "..."
+    "questions_to_ask_doctor": ["...", "...", "..."],
+    "prep_checklist": ["...", "...", "..."],
+    "urgency_notice": "..."
   },
   "doctor_deliverable": {
     "triage_level": "VERDE" | "AMARILLO" | "ROJO",
@@ -310,7 +243,7 @@ Devuelve ÚNICAMENTE un objeto JSON estricto con esta estructura exacta:
       {
         "fact": "...",
         "quote": "...",
-        "source": "Relato Inicial"
+        "source": "Relato inicial"
       }
     ]
   }
@@ -318,11 +251,10 @@ Devuelve ÚNICAMENTE un objeto JSON estricto con esta estructura exacta:
 
       let patientDeliverable: PatientDeliverable | null = null;
       let doctorDeliverable: DoctorDeliverable | null = null;
-      let usedFallback = false;
 
       try {
         const parsed = (await callGenerativeLanguageModel(
-          targetModel,
+          'models/gemini-3.8-flash',
           deliverablesPrompt,
           true
         )) as {
@@ -333,69 +265,36 @@ Devuelve ÚNICAMENTE un objeto JSON estricto con esta estructura exacta:
         if (
           parsed?.patient_deliverable?.friendly_summary &&
           parsed?.doctor_deliverable?.soap?.subjective &&
-          parsed?.doctor_deliverable?.isbar?.situation &&
-          parsed?.doctor_deliverable?.opqrst?.onset
+          parsed?.doctor_deliverable?.isbar?.situation
         ) {
           patientDeliverable = parsed.patient_deliverable;
           doctorDeliverable = parsed.doctor_deliverable;
         }
       } catch {
-        usedFallback = true;
+        // Fallback below
       }
 
       if (!patientDeliverable || !doctorDeliverable) {
-        usedFallback = true;
         const fallback = buildDeterministicDeliverables(
           processedTranscript,
-          sanitizedAnswers,
-          currency
+          sanitizedAnswers
         );
         patientDeliverable = fallback.patient_deliverable;
         doctorDeliverable = fallback.doctor_deliverable;
       }
 
-      const latencyMs = Math.max(
-        24,
-        Math.round(performance.now() - startTime)
-      );
-
       return NextResponse.json({
         patient_deliverable: patientDeliverable,
         doctor_deliverable: doctorDeliverable,
-        telemetry: {
-          latencyMs,
-          modelUsed: displayModel,
-          piiRedactedCount: piiResult.piiRedactedCount,
-          piiTypesDetected: piiResult.piiTypesDetected,
-          variant,
-          usedFallback,
-          redactedPreview: processedTranscript,
-        },
       });
     }
 
-    return NextResponse.json(
-      { error: 'Acción no reconocida en /api/telemed' },
-      { status: 400 }
-    );
-  } catch (error) {
-    const latencyMs = Math.max(15, Math.round(performance.now() - startTime));
+    return NextResponse.json({ error: 'Acción no válida' }, { status: 400 });
+  } catch {
     const fallback = buildDeterministicDeliverables(
-      'Paciente en pre-consulta de telemedicina',
-      [],
-      'GTQ'
+      'Consulta médica general',
+      []
     );
-    return NextResponse.json({
-      ...fallback,
-      telemetry: {
-        latencyMs,
-        modelUsed: 'clinical-deterministic-fallback',
-        piiRedactedCount: 0,
-        piiTypesDetected: [],
-        variant: 'B',
-        usedFallback: true,
-        errorDetail: error instanceof Error ? error.message : 'Unknown error',
-      },
-    });
+    return NextResponse.json(fallback);
   }
 }
