@@ -80,6 +80,7 @@ export function buildDeterministicFollowUps(
           'Es moderada (6/10) y disminuye al descansar',
           'Aparece y desaparece por momentos',
         ],
+        opqrst_target: 'Severity / Palliation',
       },
       {
         id: 2,
@@ -90,6 +91,7 @@ export function buildDeterministicFollowUps(
           'Solo sudor frío y falta de aire',
           'No he sentido mareo ni desmayo',
         ],
+        opqrst_target: 'Associated Red Flags',
       },
       {
         id: 3,
@@ -100,6 +102,7 @@ export function buildDeterministicFollowUps(
           'Tomé aspirina hoy; no tengo alergias',
           'Sí tengo alergia a medicamentos',
         ],
+        opqrst_target: 'Context / Allergies',
       },
     ];
   }
@@ -110,72 +113,140 @@ export function buildDeterministicFollowUps(
     lower.includes('garganta') ||
     lower.includes('tos')
   ) {
+    // El relato ya incluye duración (3 días), fiebre (38.8 °C) y oximetría (96%), por lo que solo faltan 2 preguntas clave
     return [
       {
         id: 1,
         question:
-          '¿Sientes dolor en el pecho al respirar profundo o fatiga al caminar pocos pasos?',
-        quick_options: [
-          'Solo fatiga leve al caminar',
-          'Siento molestia al toser fuerte',
-          'Respiro sin dolor en el pecho',
-        ],
-      },
-      {
-        id: 2,
-        question:
-          '¿Has podido tomar líquidos hoy y la fiebre baja cuando tomas medicamento?',
+          '¿Has podido tomar líquidos hoy y la fiebre baja cuando tomas algún medicamento?',
         quick_options: [
           'Tomo líquidos con molestia; la fiebre cede con paracetamol',
           'Me cuesta mucho tragar líquidos hoy',
           'Me hidrato bien y la fiebre es solo nocturna',
         ],
+        opqrst_target: 'Palliation / Hydration',
       },
       {
-        id: 3,
+        id: 2,
         question:
-          '¿Qué medicamentos has tomado en estos días o tienes alergia a alguno?',
+          '¿Qué medicamentos has tomado en estos días o tienes alergia a algún antibiótico o analgésico?',
         quick_options: [
           'Solo paracetamol; sin alergias conocidas',
           'Antigripal de farmacia; sin alergias',
           'Soy alérgico a la penicilina / antibióticos',
         ],
+        opqrst_target: 'Medications / Allergies',
       },
     ];
   }
 
-  return [
-    {
-      id: 1,
+  if (
+    lower.includes('cabeza') ||
+    lower.includes('migraña') ||
+    lower.includes('detrás del ojo') ||
+    lower.includes('acetaminofén')
+  ) {
+    return [
+      {
+        id: 1,
+        question:
+          '¿El dolor inició de forma gradual o súbita en segundos, y has notado vista borrosa o dificultad para hablar?',
+        quick_options: [
+          'Subió poco a poco; sin problemas para hablar',
+          'Inició rápido y veo algunos destellos de luz',
+          'Fue gradual, solo molestia a la luz',
+        ],
+        opqrst_target: 'Onset / Neurological Flags',
+      },
+      {
+        id: 2,
+        question:
+          '¿Las náuseas te han impedido tomar líquidos hoy o el dolor empeora al caminar o agacharte?',
+        quick_options: [
+          'Puedo tomar agua; empeora al mover la cabeza',
+          'Náuseas leves sin vómito; prefiero estar quieto',
+          'He vomitado y me cuesta retener líquidos',
+        ],
+        opqrst_target: 'Provocation / Associated Symptoms',
+      },
+      {
+        id: 3,
+        question:
+          '¿Has tenido episodios similares antes o eres alérgico a algún analgésico (como ibuprofeno o aspirina)?',
+        quick_options: [
+          'He tenido episodios similares antes; sin alergias',
+          'Es la primera vez que me pasa; sin alergias',
+          'Soy alérgico a antiinflamatorios (AINEs)',
+        ],
+        opqrst_target: 'History / Allergies',
+      },
+    ];
+  }
+
+  // Evaluación adaptativa (1 a 3 preguntas) según qué información falta en un relato libre
+  const hasDuration =
+    /\b(hace|desde|días|dia|horas|hora|minutos|semana|ayer|anoche)\b/i.test(
+      lower
+    );
+  const hasSeverity =
+    /\b([1-9]|10)\s*(de|\/)\s*10\b|\b(leve|moderad[oa]|fuerte|intenso|insoportable)\b/i.test(
+      lower
+    );
+  const hasMedicationOrAllergy =
+    /\b(tomé|tome|tomando|pastilla|medicamento|acetaminofén|paracetamol|ibuprofeno|alergia|alérgic[oa])\b/i.test(
+      lower
+    );
+
+  const dynamicQuestions: Omit<FollowUpQuestion, 'id'>[] = [];
+
+  if (!hasDuration || !hasSeverity) {
+    dynamicQuestions.push({
+      question: !hasDuration
+        ? '¿Desde hace cuánto tiempo empezó el malestar y qué tan intenso es del 1 al 10?'
+        : '¿Del 1 al 10, qué tan intenso sientes el malestar en este momento?',
+      quick_options: !hasDuration
+        ? [
+            'Empezó hoy; intensidad moderada (5/10)',
+            'Llevo 2 a 3 días; intensidad fuerte (7/10)',
+            'Más de una semana; molestia leve-moderada',
+          ]
+        : [
+            'Leve (2-3 de 10)',
+            'Moderado (5-6 de 10)',
+            'Fuerte (8-9 de 10)',
+          ],
+      opqrst_target: 'Time / Severity',
+    });
+  }
+
+  dynamicQuestions.push({
+    question:
+      '¿Qué empeora o alivia tus síntomas, y has notado fiebre, mareo o falta de aire?',
+    quick_options: [
+      'Empeora con el movimiento; sin fiebre ni falta de aire',
+      'Mejora en reposo; sin otros síntomas de alarma',
+      'Se acompaña de fiebre o malestar general',
+    ],
+    opqrst_target: 'Provocation / Associated Symptoms',
+  });
+
+  if (!hasMedicationOrAllergy) {
+    dynamicQuestions.push({
       question:
-        '¿El dolor inició de forma gradual o súbita, y has notado vista borrosa o dificultad para hablar?',
+        '¿Has tomado algún medicamento para aliviarlo hoy o eres alérgico a algún fármaco?',
       quick_options: [
-        'Subió poco a poco; sin problemas para hablar',
-        'Inició rápido y veo algunos destellos de luz',
-        'Fue gradual, solo molestia a la luz',
+        'No he tomado medicamentos; sin alergias conocidas',
+        'Tomé un analgésico hoy con poco alivio; sin alergias',
+        'Sí tengo alergia a algunos medicamentos',
       ],
-    },
-    {
-      id: 2,
-      question:
-        '¿El dolor empeora al caminar o mover la cabeza, o has tenido vómito o fiebre?',
-      quick_options: [
-        'Empeora con el movimiento y la luz; sin vómito ni fiebre',
-        'He vomitado hoy y me molesta el ruido',
-        'Se mantiene estable en reposo; sin fiebre',
-      ],
-    },
-    {
-      id: 3,
-      question:
-        '¿Has tenido migrañas antes o eres alérgico a algún analgésico (como ibuprofeno o aspirina)?',
-      quick_options: [
-        'He tenido episodios similares antes; sin alergias',
-        'Es la primera vez que me pasa; sin alergias',
-        'Soy alérgico a antiinflamatorios (AINEs)',
-      ],
-    },
-  ];
+      opqrst_target: 'Medications / Allergies',
+    });
+  }
+
+  return dynamicQuestions.slice(0, 3).map((q, index) => ({
+    id: index + 1,
+    ...q,
+  }));
 }
 
 function extractSentencesFromTranscript(transcript: string): string[] {
@@ -198,8 +269,15 @@ export function buildDeterministicDeliverables(
   const secondQuote = sentences[1] || sentences[sentences.length - 1] || firstQuote;
 
   const a1 = followUpAnswers[0]?.answer || 'Confirmado en preguntas de seguimiento';
-  const a2 = followUpAnswers[1]?.answer || 'Sin otros síntomas agregados';
-  const a3 = followUpAnswers[2]?.answer || 'Sin alergias medicamentosas reportadas';
+  const a2 = followUpAnswers[1]?.answer || a1;
+  const a3 =
+    followUpAnswers[2]?.answer ||
+    followUpAnswers[followUpAnswers.length - 1]?.answer ||
+    'Sin alergias medicamentosas reportadas';
+  const followUpSummaryText =
+    followUpAnswers.length > 0
+      ? followUpAnswers.map((a) => `"${a.answer}"`).join(', ')
+      : `"${a1}"`;
 
   const evidenceQuotes: EvidenceQuote[] = [
     {
@@ -217,9 +295,9 @@ export function buildDeterministicDeliverables(
         ]
       : []),
     ...followUpAnswers.map((ans, idx) => ({
-      fact: `Seguimiento #${idx + 1}`,
+      fact: `Información adicional #${idx + 1}`,
       quote: ans.answer,
-      source: 'Preguntas rápidas',
+      source: 'Seguimiento clínico',
     })),
   ];
 
@@ -262,7 +340,7 @@ export function buildDeterministicDeliverables(
           time: '40 minutos continuos',
         },
         soap: {
-          subjective: `Paciente con antecedente de HTA refiere dolor torácico opresivo de 40 minutos de evolución iniciado tras esfuerzo, irradiado a brazo izquierdo y mandíbula, acompañado de diaforesis fría y disnea. Seguimiento: "${a1}", "${a2}", "${a3}".`,
+          subjective: `Paciente con antecedente de HTA refiere dolor torácico opresivo de 40 minutos de evolución iniciado tras esfuerzo, irradiado a brazo izquierdo y mandíbula, acompañado de diaforesis fría y disnea. Seguimiento: ${followUpSummaryText}.`,
           objective:
             'Disnea al hablar reportada en entrevista inicial. Pendiente toma inmediata de signos vitales, SpO2 y ECG de 12 derivaciones.',
           assessment:
@@ -320,7 +398,7 @@ export function buildDeterministicDeliverables(
           time: '72 horas de evolución',
         },
         soap: {
-          subjective: `Cuadro de 72 horas con fiebre nocturna hasta 38.8 °C, odinofagia, tos productiva y mialgias. Niega disnea en reposo (SpO2 96%). Seguimiento: "${a1}", "${a2}", "${a3}".`,
+          subjective: `Cuadro de 72 horas con fiebre nocturna hasta 38.8 °C, odinofagia, tos productiva y mialgias. Niega disnea en reposo (SpO2 96%). Seguimiento: ${followUpSummaryText}.`,
           objective:
             'Voz clara sin taquipnea audible. Autocontrol domiciliario: T° 38.8 °C y SpO2 96%.',
           assessment:
@@ -330,7 +408,7 @@ export function buildDeterministicDeliverables(
         isbar: {
           identification: 'Paciente en pre-consulta por síndrome febril y respiratorio de 3 días.',
           situation: 'Fiebre de 38.8 °C, odinofagia y tos productiva con SpO2 96%.',
-          background: `${a3}. Evolución e hidratación: ${a2}.`,
+          background: `${a3}. Evolución e hidratación: ${a1}.`,
           assessment: 'Infección respiratoria alta hemodinámicamente estable.',
           recommendation:
             'Valoración en teleconsulta para definir manejo sintomático vs. prueba rápida.',
@@ -372,7 +450,7 @@ export function buildDeterministicDeliverables(
         time: '4 horas continuas',
       },
       soap: {
-        subjective: `Cefalea hemicraneal derecha y retroocular pulsátil 8/10 de 4 horas de evolución, con fotofobia y náuseas leves. Sin mejora tras acetaminofén 500 mg hace 2h. Seguimiento: "${a1}", "${a2}", "${a3}".`,
+        subjective: `Cefalea hemicraneal derecha y retroocular pulsátil 8/10 de 4 horas de evolución, con fotofobia y náuseas leves. Sin mejora tras acetaminofén 500 mg hace 2h. Seguimiento: ${followUpSummaryText}.`,
         objective:
           'Orientado en relato por voz, lenguaje fluido sin disartria audible. Intolerancia referida a la luz.',
         assessment:

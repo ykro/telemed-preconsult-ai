@@ -115,29 +115,19 @@ export async function POST(request: NextRequest) {
           : 'models/gemma-4-26b-a4b-it';
 
       const followUpPrompt = `Eres un médico empático en una pre-consulta de telemedicina.
-Analiza el relato del paciente e identifica qué elementos del protocolo clínico OPQRST faltan por aclarar.
+Analiza el relato del paciente e identifica qué elementos esenciales del protocolo clínico OPQRST faltan por aclarar.
 
 Relato del paciente:
 """
 ${processedTranscript}
 """
 
-Devuelve ÚNICAMENTE un JSON válido con exactamente 3 preguntas breves, claras y directas en español, cada una con 3 opciones cortas de respuesta rápida:
+Genera entre 1 y 3 preguntas breves, claras y directas en español (máximo 3) según cuánta información falte en el relato inicial. Si el relato ya es detallado, genera solo 1 o 2 preguntas; si faltan más datos clave, genera hasta 3. Devuelve ÚNICAMENTE un JSON válido donde cada pregunta incluya 3 opciones cortas de respuesta rápida:
 {
   "follow_up_questions": [
     {
       "id": 1,
       "question": "¿Pregunta corta 1?",
-      "quick_options": ["Opción 1", "Opción 2", "Opción 3"]
-    },
-    {
-      "id": 2,
-      "question": "¿Pregunta corta 2?",
-      "quick_options": ["Opción 1", "Opción 2", "Opción 3"]
-    },
-    {
-      "id": 3,
-      "question": "¿Pregunta corta 3?",
       "quick_options": ["Opción 1", "Opción 2", "Opción 3"]
     }
   ]
@@ -155,16 +145,18 @@ Devuelve ÚNICAMENTE un JSON válido con exactamente 3 preguntas breves, claras 
         if (
           parsed &&
           Array.isArray(parsed.follow_up_questions) &&
-          parsed.follow_up_questions.length === 3
+          parsed.follow_up_questions.length >= 1
         ) {
-          followUpQuestions = parsed.follow_up_questions.map((q, idx) => ({
-            id: idx + 1,
-            question: String(q.question || ''),
-            quick_options:
-              Array.isArray(q.quick_options) && q.quick_options.length >= 2
-                ? q.quick_options.map(String)
-                : ['Sí', 'No', 'No estoy seguro'],
-          }));
+          followUpQuestions = parsed.follow_up_questions
+            .slice(0, 3)
+            .map((q, idx) => ({
+              id: idx + 1,
+              question: String(q.question || ''),
+              quick_options:
+                Array.isArray(q.quick_options) && q.quick_options.length >= 2
+                  ? q.quick_options.map(String)
+                  : ['Sí', 'No', 'No estoy seguro'],
+            }));
         }
       } catch {
         // Fallback below
@@ -193,7 +185,7 @@ Devuelve ÚNICAMENTE un JSON válido con exactamente 3 preguntas breves, claras 
       }));
 
       const deliverablesPrompt = `Eres un asistente clínico de pre-consulta médica.
-Con base en el relato del paciente y sus 3 respuestas de seguimiento, genera en español:
+Con base en el relato del paciente y sus respuestas de seguimiento, genera en español:
 1. "patient_deliverable": Resumen claro y empático ("friendly_summary"), 3 preguntas sugeridas para hacerle al médico ("questions_to_ask_doctor"), 3 puntos de preparación para la consulta ("prep_checklist"), y una orientación breve de prioridad ("urgency_notice"). No incluyas precios ni costos.
 2. "doctor_deliverable": Ficha médica concisa con "triage_level" ("VERDE", "AMARILLO" o "ROJO"), "red_flags", "opqrst", "soap", "isbar" y "evidence_quotes" (citas textuales exactas del paciente).
 
@@ -202,7 +194,7 @@ Relato del paciente:
 ${processedTranscript}
 """
 
-Respuestas a las 3 preguntas rápidas:
+Respuestas de seguimiento del paciente:
 ${sanitizedAnswers
   .map((a, idx) => `${idx + 1}. ${a.question}: "${a.answer}"`)
   .join('\n')}

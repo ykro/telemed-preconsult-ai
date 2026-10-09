@@ -4,7 +4,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'PreConsulta — Prepara tu consulta médica por voz',
   description:
-    'Cuéntanos cómo te sientes por voz, responde 3 preguntas rápidas y obtén tu resumen para el paciente y ficha médica SOAP / ISBAR.',
+    'Cuéntanos cómo te sientes por voz, responde breves preguntas de seguimiento y obtén tu pase para el paciente y ficha médica SOAP / ISBAR.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

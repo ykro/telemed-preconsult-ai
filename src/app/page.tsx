@@ -60,7 +60,7 @@ export default function PreConsultaPage() {
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [isRecording, setIsRecording] = useState<boolean>(false);
 
-  // Step 2: 3 Follow-Up Questions
+  // Step 2: Dynamic Follow-Up Questions (1 to 3)
   const [isLoadingFollowUps, setIsLoadingFollowUps] = useState<boolean>(false);
   const [followUpQuestions, setFollowUpQuestions] = useState<
     FollowUpQuestion[]
@@ -473,17 +473,17 @@ export default function PreConsultaPage() {
           </div>
         )}
 
-        {/* STEP 2: 3 PREGUNTAS RÁPIDAS */}
+        {/* STEP 2: AYÚDAME CON MÁS INFORMACIÓN */}
         {step === 2 && (
           <div className="max-w-xl mx-auto space-y-5">
             <div className="rounded-2xl bg-white border border-slate-200/80 shadow-xs p-6 sm:p-8">
               <div className="mb-6">
                 <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-                  Tres preguntas rápidas
+                  Ayúdame con más información
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Selecciona o escribe una respuesta breve para afinar tu
-                  resumen.
+                  Responde estas breves preguntas para afinar tu resumen antes
+                  de enviarlo al médico.
                 </p>
               </div>
 
@@ -567,7 +567,11 @@ export default function PreConsultaPage() {
                 <button
                   type="button"
                   onClick={handleGenerateSummary}
-                  disabled={isLoadingDeliverables}
+                  disabled={
+                    isLoadingDeliverables ||
+                    followUpQuestions.length === 0 ||
+                    followUpQuestions.some((q) => !followUpAnswers[q.id]?.trim())
+                  }
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-2xs hover:bg-sky-700 disabled:opacity-40 transition cursor-pointer"
                 >
                   {isLoadingDeliverables ? (
@@ -590,6 +594,44 @@ export default function PreConsultaPage() {
         {/* STEP 3: RESULTADOS (VISTA PACIENTE / FICHA MÉDICA) */}
         {step === 3 && patientDeliverable && doctorDeliverable && (
           <div className="max-w-2xl mx-auto space-y-5">
+            {/* High-Prominence Hero Priority Clinical Callout Banner (Above Tabs, Visible on Both Views) */}
+            {patientDeliverable.urgency_notice && (
+              <div
+                role="alert"
+                className={`rounded-2xl border border-l-[6px] p-5 sm:p-6 shadow-xs ${
+                  doctorDeliverable.triage_level === 'ROJO'
+                    ? 'bg-[#FEF2F2] border-[#EF4444] text-[#991B1B]'
+                    : doctorDeliverable.triage_level === 'VERDE'
+                    ? 'bg-[#ECFDF5] border-[#10B981] text-[#065F46]'
+                    : 'bg-[#FFFBEB] border-[#F59E0B] text-[#92400E]'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-2.5">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white ${
+                      doctorDeliverable.triage_level === 'ROJO'
+                        ? 'bg-[#EF4444]'
+                        : doctorDeliverable.triage_level === 'VERDE'
+                        ? 'bg-[#10B981]'
+                        : 'bg-[#F59E0B]'
+                    }`}
+                  >
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      {doctorDeliverable.triage_level === 'ROJO'
+                        ? 'NIVEL DE PRIORIDAD CLÍNICA · ATENCIÓN URGENTE INMEDIATA'
+                        : doctorDeliverable.triage_level === 'VERDE'
+                        ? 'NIVEL DE PRIORIDAD CLÍNICA · CONSULTA RUTINARIA'
+                        : 'NIVEL DE PRIORIDAD CLÍNICA · CONSULTA PRIORITARIA HOY'}
+                    </span>
+                  </span>
+                </div>
+                <p className="text-lg sm:text-xl font-semibold leading-snug">
+                  {patientDeliverable.urgency_notice}
+                </p>
+              </div>
+            )}
+
             {/* Clean Segmented Control */}
             <div className="flex items-center justify-between gap-3 no-print">
               <div className="inline-flex rounded-xl bg-slate-200/70 p-1">
@@ -639,19 +681,6 @@ export default function PreConsultaPage() {
                     </p>
                   </div>
 
-                  {/* Subtle Priority Banner */}
-                  {patientDeliverable.urgency_notice && (
-                    <div
-                      className={`rounded-xl p-3.5 text-xs leading-relaxed border ${
-                        doctorDeliverable.triage_level === 'ROJO'
-                          ? 'bg-rose-50/70 border-rose-200 text-rose-800'
-                          : 'bg-sky-50/60 border-sky-200/80 text-sky-900'
-                      }`}
-                    >
-                      {patientDeliverable.urgency_notice}
-                    </div>
-                  )}
-
                   {/* 1. Lo que reportaste */}
                   <div>
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
@@ -662,7 +691,7 @@ export default function PreConsultaPage() {
                     </p>
                   </div>
 
-                  {/* 2. 3 preguntas para hacerle a tu médico */}
+                  {/* 2. Preguntas sugeridas para hacerle a tu médico */}
                   <div>
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
                       2. Preguntas sugeridas para tu médico
