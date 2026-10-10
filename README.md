@@ -2,7 +2,7 @@
 
 [![Produccion en Vivo - Vercel](https://img.shields.io/badge/Produccion_en_Vivo-telemed--preconsult--ai.vercel.app-0284c7?style=for-the-badge&logo=vercel&logoColor=white)](https://telemed-preconsult-ai.vercel.app)
 [![App Android Nativa](https://img.shields.io/badge/App_Android_Nativa-ykro%2Ftelemed--preconsult--android-0d9488?style=for-the-badge&logo=android&logoColor=white)](https://github.com/ykro/telemed-preconsult-android)
-[![Indice de Prototipos](https://img.shields.io/badge/Indice_General-hackathon--prototipos--index-334155?style=for-the-badge&logo=github)](https://github.com/ykro/hackathon-prototipos-index)
+[![Indice de Prototipos](https://img.shields.io/badge/Indice_General-hackathon--prototipos--index-334155?style=for-the-badge&logo=github)](https://github.com/ykro/ilab-aibuilders-prototypes)
 
 **Plataforma inteligente de pre-consulta médica por voz (PWA Mobile-First)** que transforma el relato libre del paciente (30 a 90 segundos) en un interrogatorio clínico dirigido de **1 a 3 preguntas breves de seguimiento OPQRST**, generando un **Doble Entregable Clínico**: el **Pase de Pre-Consulta para el Paciente** (con alerta clínica prioritaria de alta visibilidad) y la **Ficha Estructurada SOAP / ISBAR con Trazabilidad de Evidencia (*Evidence Tracing*) para el Médico**.
 
@@ -17,7 +17,7 @@
 | **Guía de Onboarding** | **[`docs/ONBOARDING.md`](./docs/ONBOARDING.md)** | Instalación local, prueba de los 3 casos clínicos y despliegue continuo. |
 | **Arquitectura Técnica** | **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)** | Detalle de Web Speech API, Redacción PII, máquina de estados OPQRST e integración Android. |
 | **Especificación del MVP** | **[`SPEC.md`](./SPEC.md)** | Alcance funcional del proyecto, esquema JSON unificado y criterios de diseño. |
-| **Índice General del Laboratorio** | **[`ykro/hackathon-prototipos-index`](https://github.com/ykro/hackathon-prototipos-index)** | Portal maestro de los 5 prototipos clínicos y operativos. |
+| **Índice General del Laboratorio** | **[`ykro/ilab-aibuilders-prototypes`](https://github.com/ykro/ilab-aibuilders-prototypes)** | Portal maestro de los 5 prototipos clínicos y operativos. |
 
 ---
 
