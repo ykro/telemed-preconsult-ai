@@ -68,6 +68,14 @@ El proyecto cuenta con dos canales complementarios: esta aplicación web (`telem
 
 ---
 
+## Temas para Artículos Técnicos y de Producto
+
+1. **Interrogatorio clínico adaptativo (1 a 3 preguntas) mediante evaluación de brechas semiológicas OPQRST:** Cómo reemplazar formularios médicos estáticos y extensos por un flujo conversacional que analiza el relato libre del paciente e identifica únicamente las variables clínicas faltantes (*Aparición, Provocación, Calidad, Irradiación, Severidad y Tiempo*) antes de entrar a la consulta.
+2. **Una sola entrevista, dos lenguajes — Generación simultánea del Pase del Paciente y la Ficha Médica (`SOAP` / `ISBAR`):** Diseño de esquemas estructurados que transforman una misma captura clínica en dos entregables complementarios: una guía en lenguaje claro con alerta de prioridad visible para el paciente y una nota médica estandarizada con signos de alarma y citas textuales para el médico.
+3. **Privacidad desde la captura en aplicaciones web de salud — Sanitización local de PII antes de invocar la nube:** Patrones prácticos para anonimizar identificadores personales (números de documento y teléfonos) directamente en el navegador y combinar dictado por voz en español con modelos generativos en la nube sin exponer datos sensibles.
+
+---
+
 ## Inicio Rápido Local
 
 ```bash
