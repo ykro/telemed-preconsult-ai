@@ -63,16 +63,17 @@ Definido en [`src/lib/clinical-engine.ts`](../src/lib/clinical-engine.ts), el mo
 
 ---
 
-## 4. Integración con el Repositorio Android Nativo Complementario
+## 4. Integración con Android Nativo y Uso de Gemma 4 E2B
 
 Repositorio Oficial Android: **[`https://github.com/ykro/telemed-preconsult-android`](https://github.com/ykro/telemed-preconsult-android)**
 
-| Característica | `telemed-preconsult-ai` (Este Repo — PWA) | `telemed-preconsult-android` (App Nativa) |
+### ¿Por qué Gemma 4 E2B corre localmente en la App Android Nativa y no en el navegador Web?
+
+| Criterio Técnico | Cliente Web (`telemed-preconsult-ai`) | Cliente Móvil Nativo (`telemed-preconsult-android`) |
 | :--- | :--- | :--- |
-| **Tecnología Base** | Next.js 15 (App Router), React 19, Tailwind CSS 4 | Kotlin, Jetpack Compose (Material 3), Coroutines |
-| **Motor de Voz** | Web Speech API (`SpeechRecognition` + `speechSynthesis`) | Android `RecognizerIntent` + `TextToSpeech` nativo |
-| **Inferencia Híbrida** | API `/api/telemed` (`gemma-4-26b-a4b-it` + `gemini-3.8-flash`) | Cliente REST hacia Vercel + motor clínico offline en dispositivo |
-| **Contrato de Datos** | Esquema JSON Unificado (`SOAP`, `ISBAR`, `OPQRST`, `PatientDeliverable`) | Mismo contrato JSON con de 1 a 3 preguntas dinámicas |
+| **Descarga y persistencia del modelo** | Un navegador web móvil no puede exigir la descarga de **1.3 GB a 1.5 GB** de pesos cuantizados antes de atender una consulta médica urgente; consumiría el plan de datos del paciente y excedería las cuotas de almacenamiento volátil del navegador. | El paquete cuantizado `.task` de **Gemma 4 E2B** se almacena de forma persistente en el sistema de archivos local de Android una sola vez, quedando disponible al instante sin consumir datos en cada consulta. |
+| **Aceleración de hardware (GPU / NPU)** | WebGPU y WebAssembly en navegadores móviles tienen límites estrictos de memoria por pestaña y sufren cierres abruptos (*Out-Of-Memory*) al cargar modelos de lenguaje en teléfonos de gama media. | Android nativo accede directamente a los delegados de GPU y NPU del procesador móvil mediante **MediaPipe LLM Inference API / LiteRT**, ejecutando inferencia local estable y con baja latencia. |
+| **Caso de uso principal** | **Acceso inmediato sin instalación** (vía enlace por WhatsApp o código QR en sala de espera) respaldado en la nube por **Gemini 3.8 Flash**. | **Uso recurrente, brigadas médicas y operación offline** con **Gemma 4 E2B** en el dispositivo y sincronización con **Gemini 3.8 Flash** cuando hay conectividad. |
 
 ---
 
